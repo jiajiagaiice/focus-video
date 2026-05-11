@@ -7,6 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(focus_video_core
     src/focus_video.cpp
+    src/image_super_resolution.cpp
 )
 target_include_directories(focus_video_core PUBLIC src)
 
@@ -18,4 +19,8 @@ if(BUILD_TESTING)
     add_executable(focus_video_tests tests/test_profiles.cpp)
     target_link_libraries(focus_video_tests PRIVATE focus_video_core)
     add_test(NAME focus_video_profiles COMMAND focus_video_tests)
+
+    add_executable(focus_video_image_sr_tests tests/test_image_super_resolution.cpp)
+    target_link_libraries(focus_video_image_sr_tests PRIVATE focus_video_core)
+    add_test(NAME focus_video_image_super_resolution COMMAND focus_video_image_sr_tests)
 endif()

@@ -4,6 +4,9 @@ All notable changes to Focus Video are documented in this file.
 
 ## Unreleased
 
+- Added a frame-level CPU reference super-resolution path with P6 PPM read/write support for real offline image enlargement.
+- Added CLI support for `--upscale-ppm` exports and tests covering the image upscaler round trip.
+- Documented the offline video export path that will connect FFmpeg decode, frame-level SR, and mux/encode output.
 - Added a repository changelog requirement so every future code, docs, or workflow change records a short summary here.
 - Added dependency-free validation for the repository-local `superpowers` skill to avoid PyYAML-related testing failures.
 - Updated the `superpowers` workflow checklist to require changelog updates for every change.

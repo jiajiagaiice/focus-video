@@ -12,7 +12,7 @@ File/Stream
   -> Decode (NVDEC preferred)
   -> GPU frame pool
   -> SR scheduler
-  -> TensorRT FP16 2x model
+  -> TensorRT FP16 2x model or CPU reference frame upscaler
   -> Post-process / subtitle composite
   -> D3D11/12 renderer
   -> Display
@@ -40,11 +40,12 @@ File/Stream
 
 ### 推理后端
 
-第一版建议只实现一个稳定后端：TensorRT FP16。后续再增加 DirectML 或 Vulkan 后端。
+当前仓库已经提供一个可测试的 CPU 参考帧级超分器，用于证明“读入帧 -> 生成更高分辨率帧 -> 写出文件”的真实处理闭环。它不是最终画质目标，也不能代表 3060 Ti 实时性能；生产实时后端仍建议优先实现 TensorRT FP16，后续再增加 DirectML 或 Vulkan 后端。
 
 - 模型输入：NV12/RGB 纹理转换后的线性 RGB 或 Y 通道。
 - 模型输出：2x RGB 或增强后的 Y 通道。
 - 模型建议：轻量级 2x 网络，优先实时性，不追求离线超分画质。
+- CPU 参考路径：P6 PPM 帧输入，2x/3x/4x 整数倍率输出，Performance 使用双线性放大，Balanced/Quality 额外叠加轻量边缘锐化，主要用于测试、调试和离线管线打通。
 
 ### 渲染层
 
@@ -61,6 +62,10 @@ File/Stream
 | 1080p60 | 4K60 | Performance | 允许跳过部分超分帧 |
 | 1440p30 | 4K30 | Performance | 保守支持，允许跳帧 |
 | 超过 4K 输出 | 更高 | Off | 第一版默认旁路 |
+
+## 本地视频导出策略
+
+离线导出与实时播放共用帧级超分接口，但调度目标不同：实时播放优先低延迟和音画同步，离线导出优先完整处理和可恢复失败。完整视频导出接入 FFmpeg 后的目标流程为：demux/decode 每一帧，按所选档位调用超分器，保留或重新编码音频轨，再通过 FFmpeg mux/encode 写出 MP4/MKV。离线模式可以牺牲实时性，不需要跳过超分帧；如果 GPU/TensorRT 不可用，可以回退到 CPU 参考路径或普通缩放，并在导出报告中记录。
 
 ## 降级策略
 
