@@ -4,25 +4,26 @@
 
 - 建立 C++20 / CMake 项目。
 - 定义视频参数、目标输出分辨率、GPU 能力和超分档位选择逻辑。
+- 增加运行时能力检查和本地播放入口，确保缺少真实播放/TensorRT 条件时显式失败。
 - 给 3060 Ti、2K/4K 输出目标和降级路径写单元测试。
 - 提供帧级 CPU 参考超分器和 PPM 文件导出，用于验证真实分辨率提升与离线写出闭环。
 
 ## M1：可播放本地文件
 
-- 集成 FFmpeg demux / decode。
+- 提供进程内 FFmpeg demux / decode smoke path，并继续将其扩展为完整播放时钟、音频和渲染管线。
 - Windows 上建立 D3D11 渲染窗口。
 - 支持播放、暂停、拖动、音量和基础快捷键。
 - 建立播放指标面板：FPS、帧耗时、队列深度和丢帧数。
 
 ## M2：GPU 零拷贝链路
 
-- 接入 NVDEC 硬解。
+- 接入 NVDEC 硬解；当前仅通过后端状态报告明确标记未编译。
 - 建立 GPU frame pool。
 - 减少 CPU 回读，验证 1080p60 原始播放稳定性。
 
 ## M3：实时超分 MVP
 
-- 接入 TensorRT FP16 推理。
+- 接入 TensorRT FP16 推理；当前仅通过后端状态报告明确标记未编译，下一步需要打通 FFmpeg/NVDEC 帧到 TensorRT engine 再到渲染器的零拷贝或低拷贝帧桥。
 - 支持 2x Performance / Balanced / Quality 三档模型。
 - 在 3060 Ti 上调优 1080p30 -> 2K/4K30 Balanced 档。
 - 增加一键开关和自动降级策略。
