@@ -1,0 +1,4 @@
+interface:
+  display_name: "Superpowers"
+  short_description: "Focus Video repo workflow for real-time SR player development."
+  default_prompt: "Use the superpowers skill to plan, implement, validate, commit, and prepare a PR for this Focus Video change."
