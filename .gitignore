@@ -1,0 +1,16 @@
+# Build outputs
+build/
+out/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
