@@ -28,19 +28,21 @@ File/Stream
 
 ### 解码层
 
+- 当前 M1 切片已经提供进程内 FFmpeg demux/decode smoke path，用于真实读取容器、探测视频流并解码前 N 帧。
 - 第一版推荐 FFmpeg + NVDEC。
 - 优先使用硬件解码输出 GPU 纹理。
 - 对不支持硬解的格式回退到软件解码，并自动关闭高成本超分档位。
 
 ### 超分调度器
 
+- 当前 CLI 已提供 `--backend-status` 后端状态闸门；D3D11、NVDEC、TensorRT 未编译或缺少 SDK 时不得声称实时超分可用。
 - 输入帧进入固定深度队列，队列满时丢弃最旧的待超分任务。
 - 每帧记录 decode、infer、postprocess、present 四段耗时。
 - 连续 N 帧超过预算时，从 Quality 降级到 Balanced，再降级到 Performance，最后关闭超分。
 
 ### 推理后端
 
-当前仓库已经提供一个可测试的 CPU 参考帧级超分器，用于证明“读入帧 -> 生成更高分辨率帧 -> 写出文件”的真实处理闭环。它不是最终画质目标，也不能代表 3060 Ti 实时性能；生产实时后端仍建议优先实现 TensorRT FP16，后续再增加 DirectML 或 Vulkan 后端。
+当前仓库已经提供一个可测试的 CPU 参考帧级超分器，用于证明“读入帧 -> 生成更高分辨率帧 -> 写出文件”的真实处理闭环。仓库也提供运行时能力检查和 `--play` 入口，在系统安装 ffplay 后可以启动真实本地播放后端；请求 `--with-tensorrt-sr` 时会检查 nvidia-smi、trtexec 和 TensorRT engine，并在帧桥未实现前显式失败。CPU 参考路径不是最终画质目标，也不能代表 3060 Ti 实时性能；生产实时后端仍建议优先实现 TensorRT FP16，后续再增加 DirectML 或 Vulkan 后端。
 
 - 模型输入：NV12/RGB 纹理转换后的线性 RGB 或 Y 通道。
 - 模型输出：2x RGB 或增强后的 Y 通道。

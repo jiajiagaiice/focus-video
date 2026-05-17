@@ -1,7 +1,10 @@
 #include "focus_video.hpp"
 #include "image_super_resolution.hpp"
+#include "runtime_capabilities.hpp"
+#include "video_pipeline.hpp"
 
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -38,11 +41,39 @@ int main(int argc, char** argv) {
     focus_video::VideoInfo video;
     focus_video::GpuInfo gpu;
     focus_video::OfflineExportOptions export_options;
+    focus_video::PlaybackLaunchOptions playback_options;
     bool export_ppm = false;
+    bool play_video = false;
+    bool check_runtime = false;
+    bool inspect_video = false;
+    bool decode_smoke = false;
+    bool backend_status = false;
+    std::filesystem::path inspect_video_path;
+    std::filesystem::path decode_smoke_path;
+    std::uint32_t decode_smoke_frames = 8;
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
-        if (arg == "--upscale-ppm") {
+        if (arg == "--backend-status") {
+            backend_status = true;
+        } else if (arg == "--inspect-video") {
+            inspect_video_path = value_after(i, argc, argv);
+            inspect_video = true;
+        } else if (arg == "--decode-smoke") {
+            decode_smoke_path = value_after(i, argc, argv);
+            decode_smoke = true;
+        } else if (arg == "--max-frames") {
+            decode_smoke_frames = static_cast<std::uint32_t>(std::stoul(value_after(i, argc, argv)));
+        } else if (arg == "--check-runtime") {
+            check_runtime = true;
+        } else if (arg == "--play") {
+            playback_options.video_path = value_after(i, argc, argv);
+            play_video = true;
+        } else if (arg == "--with-tensorrt-sr") {
+            playback_options.enable_tensor_rt_sr = true;
+        } else if (arg == "--trt-engine") {
+            playback_options.tensor_rt_engine_path = value_after(i, argc, argv);
+        } else if (arg == "--upscale-ppm") {
             export_options.input_path = value_after(i, argc, argv);
             export_ppm = true;
         } else if (arg == "--output") {
@@ -59,8 +90,10 @@ int main(int argc, char** argv) {
             video.fps = std::stod(value_after(i, argc, argv));
         } else if (arg == "--target-width") {
             video.target_width = static_cast<std::uint32_t>(std::stoul(value_after(i, argc, argv)));
+            playback_options.target_width = video.target_width;
         } else if (arg == "--target-height") {
             video.target_height = static_cast<std::uint32_t>(std::stoul(value_after(i, argc, argv)));
+            playback_options.target_height = video.target_height;
         } else if (arg == "--gpu") {
             gpu.name = value_after(i, argc, argv);
         } else if (arg == "--vram-mb") {
@@ -71,11 +104,58 @@ int main(int argc, char** argv) {
             gpu.supports_fp16 = false;
         } else if (arg == "--help") {
             std::cout << "Usage: focus-video [--width N] [--height N] [--fps N] [--target-width N] [--target-height N] [--gpu NAME] [--vram-mb N]\n";
+            std::cout << "       focus-video --backend-status\n";
+            std::cout << "       focus-video --inspect-video INPUT.mp4\n";
+            std::cout << "       focus-video --decode-smoke INPUT.mp4 [--max-frames N]\n";
+            std::cout << "       focus-video --check-runtime [--play INPUT.mp4] [--with-tensorrt-sr --trt-engine MODEL.engine] [--target-width N] [--target-height N]\n";
+            std::cout << "       focus-video --play INPUT.mp4 [--with-tensorrt-sr --trt-engine MODEL.engine] [--target-width N] [--target-height N]\n";
             std::cout << "       focus-video --upscale-ppm INPUT.ppm --output OUTPUT.ppm [--scale 2] [--sr-mode performance|balanced|quality]\n";
             return 0;
         } else {
             std::cerr << "Unknown argument: " << arg << '\n';
             return 2;
+        }
+    }
+
+    if (backend_status) {
+        std::cout << focus_video::format_accelerator_backend_status(focus_video::accelerator_backend_status());
+        return 0;
+    }
+
+    if (inspect_video) {
+        try {
+            std::cout << focus_video::format_probe_result(focus_video::probe_video(inspect_video_path));
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "Video inspect failed: " << error.what() << '\n';
+            return 1;
+        }
+    }
+
+    if (decode_smoke) {
+        try {
+            std::cout << focus_video::format_decode_smoke_result(
+                focus_video::decode_video_smoke(decode_smoke_path, decode_smoke_frames));
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "Decode smoke failed: " << error.what() << '\n';
+            return 1;
+        }
+    }
+
+    if (check_runtime) {
+        const auto capabilities = focus_video::detect_runtime_capabilities();
+        std::cout << focus_video::format_runtime_report(capabilities, playback_options);
+        return focus_video::runtime_blockers(capabilities, playback_options).empty() ? 0 : 1;
+    }
+
+    if (play_video) {
+        const auto capabilities = focus_video::detect_runtime_capabilities();
+        try {
+            return focus_video::play_local_video(capabilities, playback_options);
+        } catch (const std::exception& error) {
+            std::cerr << error.what();
+            return 1;
         }
     }
 
